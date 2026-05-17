@@ -3,7 +3,6 @@ import pandas as pd
 import json
 import os
 from google import genai
-from google.genai import types
 
 # -------------------------------------------------------------
 # 1. INITIALIZATION & SETUP
@@ -19,13 +18,12 @@ API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
     st.warning("Please configure your GEMINI_API_KEY to enable the AI recommendations.")
 
-# Initialize the GenAI client
+# Initialize the GenAI client using the correct SDK pattern
 client = genai.Client(api_key=API_KEY)
 
 # -------------------------------------------------------------
 # 2. MOCK WARDROBE DATABASE
 # -------------------------------------------------------------
-# In a full app, this would come from a SQL database or CSV file upload
 if "wardrobe" not in st.session_state:
     st.session_state.wardrobe = pd.DataFrame([
         {"ID": 1, "Category": "Top", "Item": "White Button-down Shirt", "Color": "White", "Style": "Formal"},
@@ -106,13 +104,13 @@ with col2:
                 """
                 
                 try:
-                    # Generate response enforcing JSON format
+                    # FIXED: Pass config as a clean dictionary directly to config argument
                     response = client.models.generate_content(
                         model='gemini-2.5-flash',
                         contents=prompt,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json"
-                        ),
+                        config={
+                            'response_mime_type': 'application/json'
+                        }
                     )
                     
                     # Parse the JSON outcome
