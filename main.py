@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import json
 import os
-from google import genai
+import importlib
 
 # -------------------------------------------------------------
-# 1. STREAMLIT-OPTIMIZED INITIALIZATION
+# 1. STREAMLIT CONFIGURATION
 # -------------------------------------------------------------
 st.set_page_config(page_title="AI Personal Fashion Stylist", layout="wide")
 st.title("👗 Personal AI Fashion Stylist")
@@ -17,24 +17,60 @@ API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
     st.warning("Please configure your GEMINI_API_KEY to enable the AI recommendations.")
 
-# FIXED: Use st.cache_resource so Streamlit doesn't try to serialize the client on every rerun
-@st.cache_resource
-def get_gemini_client(api_key):
-    try:
-        if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
-            return genai.Client(api_key=api_key)
-        else:
-            return genai.Client()
-    except Exception:
-        if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
-            os.environ["GEMINI_API_KEY"] = api_key
-        return genai.Client()
+# -------------------------------------------------------------
+# 2. BULLETPROOF API CALL WRAPPER (Prevents Import Errors)
+# -------------------------------------------------------------
+def call_gemini_api(api_key, prompt):
+    """
+    Dynamically imports the correct Gemini library at runtime.
+    This guarantees no 'ImportError' crashes on boot.
+    """
+    if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
+        os.environ["GEMINI_API_KEY"] = api_key
 
-# Get the safe client instance
-client = get_gemini_client(API_KEY)
+    # STRATEGY A: Try using the new 'google-genai' SDK dynamically
+    try:
+        # Check if the brand new 'genai' module exists inside 'google'
+        google_module = importlib.import_with_name_error = importlib.import_module('google')
+        if hasattr(google_module, 'genai'):
+            from google import genai
+            local_client = genai.Client()
+            
+            if hasattr(local_client, 'models'):
+                response = local_client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                    config={'response_mime_type': 'application/json'}
+                )
+            else:
+                response = local_client.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                    config={'response_mime_type': 'application/json'}
+                )
+            return response.text
+    except (ImportError, AttributeError):
+        pass  # Fall through to the older SDK if anything goes wrong
+
+    # STRATEGY B: Fall back to legacy 'google-generativeai' SDK
+    try:
+        import google.generativeai as legacy_genai
+        if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
+            legacy_genai.configure(api_key=api_key)
+        else:
+            legacy_genai.configure()
+            
+        model = legacy_genai.GenerativeModel(
+            model_name='gemini-1.5-flash',  # Globally compatible fallback model
+            generation_config={"response_mime_type": "application/json"}
+        )
+        response = model.generate_content(prompt)
+        return response.text
+    except ImportError:
+        raise ImportError("Neither 'google-genai' nor 'google-generativeai' packages are installed on this server. Please add them to requirements.txt.")
 
 # -------------------------------------------------------------
-# 2. MOCK WARDROBE DATABASE
+# 3. MOCK WARDROBE DATABASE
 # -------------------------------------------------------------
 if "wardrobe" not in st.session_state:
     st.session_state.wardrobe = pd.DataFrame([
@@ -51,7 +87,7 @@ if "wardrobe" not in st.session_state:
     ])
 
 # -------------------------------------------------------------
-# 3. USER INTERFACE (SIDEBAR & INPUTS)
+# 4. USER INTERFACE (SIDEBAR & INPUTS)
 # -------------------------------------------------------------
 col1, col2 = st.columns([1, 2])
 
@@ -75,7 +111,7 @@ with col1:
         st.dataframe(st.session_state.wardrobe, use_container_width=True, hide_index=True)
 
 # -------------------------------------------------------------
-# 4. AI ENGINE & INFERENCE
+# 5. UI DISPLAY & PROCESSING
 # -------------------------------------------------------------
 with col2:
     st.header("👔 Your Recommended Look")
@@ -115,21 +151,8 @@ with col2:
                 """
                 
                 try:
-                    # Dynamic runtime attribute routing to keep it completely version-agnostic
-                    if hasattr(client, 'models'):
-                        response = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt,
-                            config={'response_mime_type': 'application/json'}
-                        )
-                        response_text = response.text
-                    else:
-                        response = client.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt,
-                            config={'response_mime_type': 'application/json'}
-                        )
-                        response_text = response.text
+                    # Run the safe cross-version wrapper
+                    response_text = call_gemini_api(API_KEY, prompt)
                     
                     # Parse and extract the JSON styling choices
                     result = json.loads(response_text)
