@@ -5,18 +5,18 @@ import os
 import importlib
 
 # -------------------------------------------------------------
-# 1. PAGE SETUP & USER-FRIENDLY STYLING
+# 1. PAGE CONFIGURATION & INTERFACE THEME
 # -------------------------------------------------------------
 st.set_page_config(
-    page_title="AI Smart Wardrobe & Digital Closet Pro", 
+    page_title="Hyper-Personalized AI Fashion Stylist Pro", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("🛍️ Advanced AI Smart Wardrobe & Personal Stylist")
-st.write("Manage your digital clothing inventory and use Generative AI to curate context-aware, highly personalized outfits.")
+st.title("👗 Hyper-Personalized AI Stylist & Closet Engine")
+st.write("Input your unique physical build, upload profile specs, and use Generative AI to discover tailored looks.")
 
-# Fetch system environment key safely
+# Secure System API Key Verification
 API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
     st.sidebar.warning("⚠️ Setup Required: Please set your GEMINI_API_KEY environment variable.")
@@ -27,7 +27,7 @@ if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
 def call_gemini_api(api_key, prompt):
     """
     Dynamically maps execution across new 'google-genai' and legacy
-    'google-generativeai' libraries. Guarantees 0% boot-import crashes.
+    'google-generativeai' libraries. Ensures zero boot-import crashes.
     """
     if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
         os.environ["GEMINI_API_KEY"] = api_key
@@ -70,18 +70,18 @@ def call_gemini_api(api_key, prompt):
         response = model.generate_content(prompt)
         return response.text
     except ImportError:
-        raise ImportError("No compatible AI Engine drivers available on host machine environment.")
+        raise ImportError("No compatible AI Engine drivers available on the host machine environment.")
 
 # -------------------------------------------------------------
-# 3. GLOBAL STATE CLOSET DATABASE INITIALIZATION
+# 3. CLOSET MEMORY INITIALIZATION
 # -------------------------------------------------------------
 if "closet" not in st.session_state:
     st.session_state.closet = pd.DataFrame([
         {"Category": "Top", "Item": "White Oxford Button-Down", "Color": "White", "Vibe": "Formal"},
-        {"Category": "Top", "Item": "Vintage Black Graphic Tee", "Color": "Black", "Vibe": "Casual"},
+        {"Category": "Top", "Item": "Oversized Charcoal Hooded Sweatshirt", "Color": "Charcoal Grey", "Vibe": "Casual"},
         {"Category": "Top", "Item": "Navy Blue Cable Knit Sweater", "Color": "Navy", "Vibe": "Smart Casual"},
-        {"Category": "Bottom", "Item": "Slim-fit Distressed Blue Jeans", "Color": "Blue", "Vibe": "Casual"},
-        {"Category": "Bottom", "Item": "Tailored Charcoal Slacks", "Color": "Charcoal Grey", "Vibe": "Formal"},
+        {"Category": "Bottom", "Item": "Slim-fit Blue Jeans", "Color": "Blue Jeans", "Vibe": "Casual"},
+        {"Category": "Bottom", "Item": "Tailored Black Slacks", "Color": "Black", "Vibe": "Formal"},
         {"Category": "Bottom", "Item": "Beige Cotton Chino Shorts", "Color": "Beige", "Vibe": "Casual"},
         {"Category": "Footwear", "Item": "Minimalist White Sneakers", "Color": "White", "Vibe": "Casual"},
         {"Category": "Footwear", "Item": "Italian Brown Leather Loafers", "Color": "Brown", "Vibe": "Formal"},
@@ -90,46 +90,62 @@ if "closet" not in st.session_state:
     ])
 
 # -------------------------------------------------------------
-# 4. SIDEBAR - LIVE DIGITAL CLOSET INPUT MANAGER
+# 4. SIDEBAR - PROFILE DATA & INVENTORY MANAGER
 # -------------------------------------------------------------
 with st.sidebar:
+    st.header("👤 Your Physical Build Profile")
+    st.write("Provide your dimensions so the AI can suggest cuts and fits that look best on you.")
+    
+    # User Measurements Panel
+    col_h, col_w = st.columns(2)
+    with col_h:
+        height_cm = st.number_input("Height (cm)", min_value=100, max_value=250, value=175, step=1)
+    with col_w:
+        weight_kg = st.number_input("Weight (kg)", min_value=30, max_value=200, value=70, step=1)
+        
+    body_shape = st.selectbox(
+        "Body Type / Silhouette",
+        ["Rectangle / Athletic", "Inverted Triangle (Broad Shoulders)", "Oval / Round", "Triangle / Pear", "Hourglass"]
+    )
+    
+    user_photo_url = st.text_input(
+        "Style Reference Photo URL (Optional)", 
+        placeholder="https://example.com/your-image.jpg"
+    )
+    if user_photo_url.strip():
+        st.image(user_photo_url, caption="Your Reference Style / Profile", use_container_width=True)
+
+    st.markdown("---")
     st.header("✨ Expand Digital Closet")
-    st.write("Add clothes you own to your virtual wardrobe pool below.")
     
     with st.form("wardrobe_input_form", clear_on_submit=True):
-        category = st.selectbox("Clothing Layer/Category", ["Top", "Bottom", "Footwear", "Accessory"])
+        category = st.selectbox("Clothing Layer", ["Top", "Bottom", "Footwear", "Accessory"])
         name = st.text_input("Clothing Name", placeholder="e.g., Suede Bomber Jacket")
         color = st.text_input("Primary Color", placeholder="e.g., Olive Green")
         vibe = st.selectbox("Design Vibe/Style", ["Casual", "Formal", "Smart Casual", "Athletic", "Universal"])
         
         submitted = st.form_submit_button("➕ Register Item to Closet")
         
-        if submitted:
-            if name.strip() == "":
-                st.error("Item name cannot be left empty.")
-            else:
-                new_clothing_item = {
-                    "Category": category,
-                    "Item": name,
-                    "Color": color if color else "Unspecified",
-                    "Vibe": vibe
-                }
-                # Seamless data concat appending onto active state memory
-                st.session_state.closet = pd.concat([st.session_state.closet, pd.DataFrame([new_clothing_item])], ignore_index=True)
-                st.toast(f"Saved: {name} added to your digital wardrobe!", icon="added")
+        if submitted and name.strip():
+            new_clothing_item = {
+                "Category": category,
+                "Item": name,
+                "Color": color if color else "Unspecified",
+                "Vibe": vibe
+            }
+            st.session_state.closet = pd.concat([st.session_state.closet, pd.DataFrame([new_clothing_item])], ignore_index=True)
+            st.toast(f"Saved: {name} added to your digital wardrobe!", icon="✨")
 
     st.markdown("---")
-    st.header("📊 Inventory Breakdown")
     st.metric("Total Digital Items Stored", len(st.session_state.closet))
 
 # -------------------------------------------------------------
-# 5. USER DISPLAY & INTERACTIVE CONFIGURATION PANELS
+# 5. MAIN CONFIGURATION PANE
 # -------------------------------------------------------------
-col_control, col_output = st.columns([1, 1.3])
+col_control, col_output = st.columns([1, 1.2])
 
 with col_control:
-    st.header("🎯 Style Configuration")
-    st.write("Tell the AI what your day looks like so it can curate your style.")
+    st.header("🎯 Context & Environment Settings")
     
     occasion = st.selectbox(
         "What event are you dressing for?",
@@ -142,47 +158,53 @@ with col_control:
     )
     
     custom_mood = st.text_input(
-        "Any custom design constraints/preferences?",
-        placeholder="e.g., 'Incorporate layers', 'All black look', 'Comfy footwear only'"
+        "Specific aesthetic guidelines?",
+        placeholder="e.g., 'Minimize torso look', 'Highlight shoulders', 'Earth tones only'"
     )
     
     st.markdown(" ")
-    generate_outfit = st.button("🚀 Analyze Wardrobe & Curate Outfit", type="primary", use_container_width=True)
+    generate_outfit = st.button("🚀 Curate Custom Silhouette Outfit", type="primary", use_container_width=True)
     
     st.markdown("---")
     st.subheader("📦 Your Current Active Wardrobe Database")
     st.dataframe(st.session_state.closet, use_container_width=True, hide_index=True)
 
 # -------------------------------------------------------------
-# 6. ENHANCED USER-FRIENDLY RESPONSE ENGINE
+# 6. ENHANCED RESPONSE GENERATION MATRIX
 # -------------------------------------------------------------
 with col_output:
-    st.header("👔 Your Curated Styling Recommendation")
+    st.header("👔 Your Custom Tailored Look")
     
     if generate_outfit:
         if API_KEY == "YOUR_GEMINI_API_KEY_HERE" and not os.getenv("GEMINI_API_KEY"):
             st.error("Authentication Error: Valid API configuration required to run styling algorithm engines.")
         elif len(st.session_state.closet) < 3:
-            st.warning("Your digital closet needs a larger selection. Please add at least one Top, Bottom, and Footwear option in the sidebar.")
+            st.warning("Your digital closet needs a larger selection. Please register items using the sidebar configuration panels.")
         else:
-            with st.spinner("Analyzing outfit color matrices, aesthetic harmonies, and weather parameters..."):
-                # Convert session DataFrame contents clean format text string block
+            with st.spinner("Calculating physical build matching indexes, layer weight, and proportions..."):
                 closet_text_dump = st.session_state.closet.to_string(index=False)
                 
                 styling_prompt = f"""
-                You are an award-winning elite personal fashion stylist. Your goal is to review the user's available inventory clothes items and pick the absolute best combination match matching the environmental metrics.
+                You are a world-class premier fashion stylist specializing in geometric body shape tailoring and proportion styling.
+                Your task is to pick the ultimate outfit combination from the user's available wardrobe list based on their physical profile dimensions, weather conditions, and occasion.
                 
-                ### Critical Rules:
-                1. You must ONLY select items that exist inside the Wardrobe Dataset below. Never invent pieces.
-                2. Pick exactly one 'Top', one 'Bottom', and one 'Footwear' option. You can list up to 3 'Accessory' items.
+                ### User Physical Silhouette Profile:
+                - Height: {height_cm} cm
+                - Weight: {weight_kg} kg
+                - Stated Body Frame Silhouette Type: {body_shape}
+                - Reference Portrait Media URL: {user_photo_url if user_photo_url else 'None provided'}
                 
-                ### User Environmental Context Parameters:
-                - Occasion Vibe Target: {occasion}
+                ### Environmental Metrics:
+                - Target Occasion: {occasion}
                 - Weather Climate Factor: {weather}
-                - User Custom Rules: {custom_mood}
+                - Custom Tailoring Adjustments: {custom_mood}
                 
                 ### Available Wardrobe Dataset Pool:
                 {closet_text_dump}
+                
+                ### Rules:
+                1. Pick exactly one Top, one Bottom, and one Footwear choice from the list. Do not invent non-existent clothes.
+                2. Explicitly explain how this clothing configuration flatters a person who is {height_cm}cm tall and weighs {weight_kg}kg with an {body_shape} build type.
                 
                 ### Enforced JSON Output Structural Design Map:
                 Return your response strictly as valid, raw JSON matching this map format structure:
@@ -191,7 +213,7 @@ with col_output:
                   "bottom_picked": "Name of the chosen item categorized as Bottom",
                   "footwear_picked": "Name of the chosen item categorized as Footwear",
                   "accessories_list": ["Accessory Choice A", "Accessory Choice B"],
-                  "professional_reasoning": "A highly detailed, sophisticated fashion analysis explaining why these colors, layers, and styles harmonize together to match the occasion and handle the weather."
+                  "tailoring_fit_analysis": "An expert analysis explaining how these selected cuts, structures, and item fits specifically optimize, flatter, and balance their physical proportions based on their height, weight, and body frame type."
                 }}
                 """
                 
@@ -200,18 +222,18 @@ with col_output:
                     raw_ai_text = call_gemini_api(API_KEY, styling_prompt)
                     parsed_style_map = json.loads(raw_ai_text)
                     
-                    st.success("🎉 Look Curated Successfully!")
+                    st.success("🎉 Look Tailored Successfully!")
                     
                     # Layout grid design framework cards
                     st.markdown("### 👔 Selected Ensemble Matrix")
                     
                     card_top, card_bottom, card_shoes = st.columns(3)
                     with card_top:
-                        st.metric(label="👕 Top Selection", value=parsed_style_map.get("top_picked", "N/A"))
+                        st.metric(label="👕 Top Choice", value=parsed_style_map.get("top_picked", "N/A"))
                     with card_bottom:
-                        st.metric(label="👖 Bottom Selection", value=parsed_style_map.get("bottom_picked", "N/A"))
+                        st.metric(label="👖 Bottom Choice", value=parsed_style_map.get("bottom_picked", "N/A"))
                     with card_shoes:
-                        st.metric(label="👟 Footwear Selection", value=parsed_style_map.get("footwear_picked", "N/A"))
+                        st.metric(label="👟 Footwear Choice", value=parsed_style_map.get("footwear_picked", "N/A"))
                     
                     # Display Accessories
                     selected_accs = parsed_style_map.get("accessories_list", [])
@@ -219,12 +241,12 @@ with col_output:
                         st.markdown("#### ✨ Accent Pieces & Accessories")
                         st.markdown(" ".join([f"`{item}`" for item in selected_accs]))
                     
-                    # Display Professional Expert Stylist Reasoning Insights
+                    # Display Pro Fit & Fit Customization Breakdown
                     st.markdown("---")
-                    st.markdown("### 💡 Professional Stylist Analysis")
-                    st.info(parsed_style_map.get("professional_reasoning", "No detailed design documentation attached by engine."))
+                    st.markdown("### 💡 Silhouette Proportional Analysis")
+                    st.info(parsed_style_map.get("tailoring_fit_analysis", "No structural metrics returned by the generative engine."))
                     
                 except Exception as error_exception:
                     st.error(f"Failed to generate outfit curation successfully. Error diagnostic log: {error_exception}")
     else:
-        st.info("Configure your layout specifications on the left panel grid and trigger **Analyze Wardrobe & Curate Outfit** to run the design models.")
+        st.info("Tailor your dimension metrics on the left pane and press **Curate Custom Silhouette Outfit** to generate recommendations.")
