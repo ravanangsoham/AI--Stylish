@@ -18,8 +18,18 @@ API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
     st.warning("Please configure your GEMINI_API_KEY to enable the AI recommendations.")
 
-# Initialize the GenAI client using the correct SDK pattern
-client = genai.Client(api_key=API_KEY)
+# SAFE CLIENT INITIALIZATION: 
+# If api_key parameter fails, it fallback-initializes via environment variable automatically.
+try:
+    if API_KEY and API_KEY != "YOUR_GEMINI_API_KEY_HERE":
+        client = genai.Client(api_key=API_KEY)
+    else:
+        client = genai.Client()
+except TypeError:
+    # Fallback to setting environment variable directly if the SDK expects it implicitly
+    if API_KEY and API_KEY != "YOUR_GEMINI_API_KEY_HERE":
+        os.environ["GEMINI_API_KEY"] = API_KEY
+    client = genai.Client()
 
 # -------------------------------------------------------------
 # 2. MOCK WARDROBE DATABASE
@@ -69,7 +79,7 @@ with col2:
     st.header("👔 Your Recommended Look")
     
     if generate_btn:
-        if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
+        if API_KEY == "YOUR_GEMINI_API_KEY_HERE" and not os.getenv("GEMINI_API_KEY"):
             st.error("Cannot proceed without a valid Gemini API Key configuration.")
         else:
             with st.spinner("Analyzing style combinations..."):
@@ -104,7 +114,7 @@ with col2:
                 """
                 
                 try:
-                    # FIXED: Pass config as a clean dictionary directly to config argument
+                    # Request content generation using a clean config dictionary
                     response = client.models.generate_content(
                         model='gemini-2.5-flash',
                         contents=prompt,
