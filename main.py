@@ -5,7 +5,7 @@ import os
 from google import genai
 
 # -------------------------------------------------------------
-# 1. INITIALIZATION & SETUP
+# 1. STREAMLIT-OPTIMIZED INITIALIZATION
 # -------------------------------------------------------------
 st.set_page_config(page_title="AI Personal Fashion Stylist", layout="wide")
 st.title("👗 Personal AI Fashion Stylist")
@@ -17,16 +17,21 @@ API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
     st.warning("Please configure your GEMINI_API_KEY to enable the AI recommendations.")
 
-# Initialize the GenAI client safely
-try:
-    if API_KEY and API_KEY != "YOUR_GEMINI_API_KEY_HERE":
-        client = genai.Client(api_key=API_KEY)
-    else:
-        client = genai.Client()
-except Exception:
-    if API_KEY and API_KEY != "YOUR_GEMINI_API_KEY_HERE":
-        os.environ["GEMINI_API_KEY"] = API_KEY
-    client = genai.Client()
+# FIXED: Use st.cache_resource so Streamlit doesn't try to serialize the client on every rerun
+@st.cache_resource
+def get_gemini_client(api_key):
+    try:
+        if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
+            return genai.Client(api_key=api_key)
+        else:
+            return genai.Client()
+    except Exception:
+        if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
+            os.environ["GEMINI_API_KEY"] = api_key
+        return genai.Client()
+
+# Get the safe client instance
+client = get_gemini_client(API_KEY)
 
 # -------------------------------------------------------------
 # 2. MOCK WARDROBE DATABASE
@@ -110,17 +115,23 @@ with col2:
                 """
                 
                 try:
-                    # Use the correct parameter name: generation_config
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                        generation_config=genai.types.GenerationConfig(
-                            response_mime_type='application/json'
+                    # Dynamic runtime attribute routing to keep it completely version-agnostic
+                    if hasattr(client, 'models'):
+                        response = client.models.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=prompt,
+                            config={'response_mime_type': 'application/json'}
                         )
-                    )
-                    response_text = response.text
+                        response_text = response.text
+                    else:
+                        response = client.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=prompt,
+                            config={'response_mime_type': 'application/json'}
+                        )
+                        response_text = response.text
                     
-                    # Parse the JSON outcome
+                    # Parse and extract the JSON styling choices
                     result = json.loads(response_text)
                     
                     # Display recommendations cleanly
