@@ -12,6 +12,8 @@ API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 def call_gemini_api(api_key, prompt):
     if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
         os.environ["GEMINI_API_KEY"] = api_key
+        
+    # STRATEGY A: Clean dynamic loading of the new google-genai library
     try:
         google_module = importlib.import_module('google')
         if hasattr(google_module, 'genai'):
@@ -19,14 +21,18 @@ def call_gemini_api(api_key, prompt):
             local_client = genai.Client()
             target = local_client.models if hasattr(local_client, 'models') else local_client
             response = target.generate_content(
-                model='gemini-2.5-flash', contents=prompt,
+                model='gemini-2.5-flash', 
+                contents=prompt,
                 config={'response_mime_type': 'application/json'}
             )
             return response.text
     except Exception:
         pass
+
+    # STRATEGY B: Fallback directly to legacy google-generativeai core
     import google.generativeai as legacy_genai
-    if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE": legacy_genai.configure(api_key=api_key)
+    if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE": 
+        legacy_genai.configure(api_key=api_key)
     model = legacy_genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json"})
     return model.generate_content(prompt).text
 
