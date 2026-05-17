@@ -7,29 +7,29 @@ from PIL import Image
 from datetime import datetime
 
 # -------------------------------------------------------------
-# 1. DESIGN THEME & DYNAMIC MOBILE CONTAINER SIZING
+# 1. PAGE SETUP & MOBILE RESPONSIVE UI TWEAKS
 # -------------------------------------------------------------
 st.set_page_config(
-    page_title="AI Smart Wardrobe & Personal Stylist Pro", 
+    page_title="AI Smart Wardrobe & Stylist Pro", 
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Custom responsive styles to optimize cards and spacing on touch phones/tablets
+# Injected CSS to optimize touch interfaces and responsive scaling
 st.markdown("""
     <style>
-    [data-testid="stMetricValue"] { font-size: calc(1.3rem + 0.8vw) !important; }
+    [data-testid="stMetricValue"] { font-size: calc(1.2rem + 0.8vw) !important; }
     .stImage > img { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .block-container { padding-top: 1.5rem !important; padding-bottom: 2rem !important; }
     div[data-testid="stExpander"] { border-radius: 10px !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# Secure API Key Verification Fallback
+# Secure API Key Check
 API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
 # -------------------------------------------------------------
-# 2. BULLETPROOF RUNTIME CALL ENGINE 
+# 2. BULLETPROOF DYNAMIC API CALL WRAPPER
 # -------------------------------------------------------------
 def call_gemini_api(api_key, prompt):
     if api_key and api_key != "YOUR_GEMINI_API_KEY_HERE":
@@ -55,7 +55,7 @@ def call_gemini_api(api_key, prompt):
     return model.generate_content(prompt).text
 
 # -------------------------------------------------------------
-# 3. CORE GLOBAL DATABASE STATES (PERSISTENT MEMORY)
+# 3. GLOBAL STATE STATE INITIALIZATION (PERSISTENT MEMORY)
 # -------------------------------------------------------------
 if "closet" not in st.session_state:
     st.session_state.closet = pd.DataFrame([
@@ -71,44 +71,41 @@ if "history" not in st.session_state:
     st.session_state.history = []
 
 # -------------------------------------------------------------
-# 4. MOBILE-FRIENDLY CENTRAL HUB NAVIGATION CONTROLLER
+# 4. APP LAYOUT & CENTRAL NAVIGATION TABS
 # -------------------------------------------------------------
-st.title("🛍️ Advanced AI Smart Wardrobe Hub")
-st.write("Manage your closet, track your dimensions, and design tailored lookbooks seamlessly.")
+st.title("🛍️ AI Smart Wardrobe Hub")
+st.write("Manage your closet inventory, set physical builds, and generate context-tailored styles.")
 
-# Tab layouts ensure all features fit perfectly on phones, tablets, or desktops without scrolling away
 tab_engine, tab_closet, tab_profile, tab_history = st.tabs([
     "✨ Style Engine", 
-    "📦 Digital Closet Ledger", 
-    "👤 Body Profile Settings", 
-    "📜 Lookbook History Log"
+    "📦 Digital Closet", 
+    "👤 Body Profile", 
+    "📜 Lookbook History"
 ])
 
-# -------------------------------------------------------------
-# TAB 1: CORE STYLE ENGINE & GENERATOR
-# -------------------------------------------------------------
+# --- TAB 1: STYLE ENGINE & GENERATOR ---
 with tab_engine:
     if API_KEY == "YOUR_GEMINI_API_KEY_HERE" and not os.getenv("GEMINI_API_KEY"):
-        st.warning("⚠️ Configuration Alert: Setup your GEMINI_API_KEY environment variable to start generating.")
+        st.warning("⚠️ API Key Missing: Please configure your GEMINI_API_KEY to clear the restriction.")
         
     col_ctrl, col_out = st.columns([1, 1.2])
     
     with col_ctrl:
-        st.subheader("🎯 Styling Target Criteria")
-        occasion = st.selectbox("What event are you heading to?", ["Casual Weekend Hangout", "High-Stakes Job Interview", "Formal Dinner Date", "Corporate Business Meeting", "Late Night Club Vibe"])
+        st.subheader("🎯 Context Settings")
+        occasion = st.selectbox("What event are you dressing for?", ["Casual Weekend Hangout", "High-Stakes Job Interview", "Formal Dinner Date", "Corporate Business Meeting", "Late Night Club Vibe"])
         weather = st.selectbox("What is the climate like?", ["Bright, Sunny & Warm", "Freezing Cold & Rainy", "Chilly, Breezy & Windy", "High Humidity & Hot"])
         custom_mood = st.text_input("Special tailoring requests?", placeholder="e.g., 'Incorporate layers', 'Highlight broad shoulders'")
         
         generate_btn = st.button("🚀 Analyze & Curate Outfit", type="primary", use_container_width=True)
         
     with col_out:
-        st.subheader("👔 Your Curated Custom Silhouette Look")
+        st.subheader("👔 Your Curated Look")
         
         if generate_btn:
             if len(st.session_state.closet) < 3:
-                st.warning("Your digital closet database needs a larger selection. Please add elements inside the Closet tab.")
+                st.warning("Your digital closet database needs a larger selection. Please add elements inside the Digital Closet tab.")
             else:
-                with st.spinner("Running color balance matrices and frame metrics..."):
+                with st.spinner("Running styling metrics and build ratios..."):
                     closet_dump = st.session_state.closet.to_string(index=False)
                     h_cm = st.session_state.get('p_height', 175)
                     w_kg = st.session_state.get('p_weight', 70)
@@ -116,15 +113,15 @@ with tab_engine:
                     has_photo = "Yes (User uploaded custom portrait blueprint)" if st.session_state.get('p_img_uploaded', False) else "None provided"
                     
                     prompt = f"""
-                    You are an award-winning personal master stylist specializing in visual height balancing and proportion framing.
-                    Select the ultimate combination match from the user's wardrobe list parameters.
+                    You are an award-winning personal master stylist specializing in height balancing and proportion framing.
+                    Select the ultimate combination match from the user's wardrobe list parameter arrays.
                     
                     ### User Dimensions:
                     - Height: {h_cm} cm | Weight: {w_kg} kg | Frame Type: {b_sh}
-                    - Media Reference Attached: {has_photo}
+                    - Photo Blueprint Provided: {has_photo}
                     
-                    ### Setting Parameters:
-                    - Occasion Target: {occasion} | Weather: {weather} | Rules: {custom_mood}
+                    ### Context Metrics:
+                    - Target Occasion: {occasion} | Weather: {weather} | Rules: {custom_mood}
                     
                     ### Available Wardrobe List Pool:
                     {closet_dump}
@@ -134,7 +131,7 @@ with tab_engine:
                       "top_picked": "Name of chosen Top item",
                       "bottom_picked": "Name of chosen Bottom item",
                       "footwear_picked": "Name of chosen Footwear item",
-                      "tailoring_fit_analysis": "A sophisticated breakdown explaining why these colors and cuts maximize visual appeal based on their height, weight, and build configuration."
+                      "tailoring_fit_analysis": "A sophisticated breakdown explaining why these items optimize visual appeal based on their height, weight, and frame configuration."
                     }}
                     """
                     try:
@@ -152,7 +149,7 @@ with tab_engine:
                         st.markdown("#### 💡 Structural Analysis")
                         st.info(result.get('tailoring_fit_analysis', 'No design records provided.'))
                         
-                        # Add tracking transaction entry onto historical database state log
+                        # Add tracking entry to lookbook history log
                         log_entry = {
                             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "occasion": occasion,
@@ -168,11 +165,9 @@ with tab_engine:
         else:
             st.info("Adjust the criteria panels and click **Analyze & Curate Outfit** to run your design layout models.")
 
-# -------------------------------------------------------------
-# TAB 2: DIGITAL WARDROBE MANAGEMENT LEDGER
-# -------------------------------------------------------------
+# --- TAB 2: DIGITAL WARDROBE MANAGEMENT ---
 with tab_closet:
-    st.subheader("📦 Digital Closet Management Ledger")
+    st.subheader("📦 Closet Database Ledger")
     
     with st.expander("➕ Register a New Clothing Piece", expanded=False):
         with st.form("inventory_input_form", clear_on_submit=True):
@@ -191,9 +186,7 @@ with tab_closet:
     st.dataframe(st.session_state.closet, use_container_width=True, hide_index=True)
     st.metric("Total Items Stored In Closet Pool", len(st.session_state.closet))
 
-# -------------------------------------------------------------
-# TAB 3: USER BODY PROFILE & LIVE DIMENSION SPECIFICATIONS
-# -------------------------------------------------------------
+# --- TAB 3: USER BODY PROFILE ---
 with tab_profile:
     st.subheader("👤 Personal Proportional Profiles")
     col_p1, col_p2 = st.columns([1, 1])
@@ -212,7 +205,7 @@ with tab_profile:
         uploaded_file = st.file_uploader(
             "Upload a custom full-body portrait profile shot...", 
             type=["jpg", "jpeg", "png"],
-            help="Access your native mobile camera or select an image directly from your touch gallery database."
+            help="Access your native mobile camera or select an image directly from your device gallery."
         )
         if uploaded_file is not None:
             st.session_state['p_img_uploaded'] = True
@@ -222,9 +215,7 @@ with tab_profile:
             st.session_state['p_img_uploaded'] = False
             st.caption("No custom photo attached. Using fallback configuration mapping models.")
 
-# -------------------------------------------------------------
-# TAB 4: ACTIVE LOOKBOOK HISTORY LOG ARCHIVES
-# -------------------------------------------------------------
+# --- TAB 4: ACTIVE LOOKBOOK HISTORY ---
 with tab_history:
     st.subheader("📜 Lookbook Styling Generation Log History")
     
