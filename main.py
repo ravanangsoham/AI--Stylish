@@ -3,18 +3,40 @@ import pandas as pd
 import json
 import os
 import importlib
+from PIL import Image
 
 # -------------------------------------------------------------
-# 1. PAGE CONFIGURATION & INTERFACE THEME
+# 1. PAGE SETUP & MOBILE-RESPONSIVE CONFIGURATION
 # -------------------------------------------------------------
 st.set_page_config(
     page_title="Hyper-Personalized AI Fashion Stylist Pro", 
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide", # Allows flexible expanding on tablets/desktops
+    initial_sidebar_state="collapsed" # Better default initial view for mobile screens
 )
 
-st.title("👗 Hyper-Personalized AI Stylist & Closet Engine")
-st.write("Input your unique physical build, upload profile specs, and use Generative AI to discover tailored looks.")
+# Custom CSS injected to optimize spacing, form elements, and card padding on mobile viewports
+st.markdown("""
+    <style>
+    /* Make metrics text scale down cleanly on small smartphone screens */
+    [data-testid="stMetricValue"] {
+        font-size: calc(1.5rem + 1vw) !important;
+    }
+    /* Ensure user uploaded profile images don't overflow layout limits */
+    .stImage > img {
+        max-width: 100%;
+        border-radius: 12px;
+        height: auto;
+    }
+    /* Add subtle container padding adjustment for touch device optimizations */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🛍️ AI Smart Closet & Personal Stylist")
+st.write("Upload your photo, set your body dimensions, and let generative AI design perfectly proportioned outfits.")
 
 # Secure System API Key Verification
 API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
@@ -90,163 +112,174 @@ if "closet" not in st.session_state:
     ])
 
 # -------------------------------------------------------------
-# 4. SIDEBAR - PROFILE DATA & INVENTORY MANAGER
+# 4. PHONE/TABLET MULTI-COLUMN DESIGN LAYOUT
 # -------------------------------------------------------------
-with st.sidebar:
-    st.header("👤 Your Physical Build Profile")
-    st.write("Provide your dimensions so the AI can suggest cuts and fits that look best on you.")
-    
-    # User Measurements Panel
-    col_h, col_w = st.columns(2)
-    with col_h:
-        height_cm = st.number_input("Height (cm)", min_value=100, max_value=250, value=175, step=1)
-    with col_w:
-        weight_kg = st.number_input("Weight (kg)", min_value=30, max_value=200, value=70, step=1)
+# Using tabs for clear smartphone-level segment separation instead of wide crowded screens
+tab_stylist, tab_closet, tab_profile = st.tabs(["✨ Style Engine", "📦 My Wardrobe", "👤 Body Profile"])
+
+# --- TAB 1: STYLE ENGINE & GENERATION ---
+with tab_stylist:
+    col_control, col_output = st.columns([1, 1.2])
+
+    with col_control:
+        st.subheader("🎯 Styling Criteria")
         
-    body_shape = st.selectbox(
-        "Body Type / Silhouette",
-        ["Rectangle / Athletic", "Inverted Triangle (Broad Shoulders)", "Oval / Round", "Triangle / Pear", "Hourglass"]
-    )
-    
-    user_photo_url = st.text_input(
-        "Style Reference Photo URL (Optional)", 
-        placeholder="https://example.com/your-image.jpg"
-    )
-    if user_photo_url.strip():
-        st.image(user_photo_url, caption="Your Reference Style / Profile", use_container_width=True)
-
-    st.markdown("---")
-    st.header("✨ Expand Digital Closet")
-    
-    with st.form("wardrobe_input_form", clear_on_submit=True):
-        category = st.selectbox("Clothing Layer", ["Top", "Bottom", "Footwear", "Accessory"])
-        name = st.text_input("Clothing Name", placeholder="e.g., Suede Bomber Jacket")
-        color = st.text_input("Primary Color", placeholder="e.g., Olive Green")
-        vibe = st.selectbox("Design Vibe/Style", ["Casual", "Formal", "Smart Casual", "Athletic", "Universal"])
+        occasion = st.selectbox(
+            "What event are you dressing for?",
+            ["Casual Weekend Hangout", "High-Stakes Job Interview", "Formal Dinner Date", "Corporate Business Meeting", "Summer Outdoor Brunch", "Late Night Club/Lounge Vibe"]
+        )
         
-        submitted = st.form_submit_button("➕ Register Item to Closet")
+        weather = st.selectbox(
+            "What is the weather outside?",
+            ["Bright, Sunny & Warm", "Freezing Cold & Rainy", "Chilly, Breezy & Windy", "High Humidity & Hot"]
+        )
         
-        if submitted and name.strip():
-            new_clothing_item = {
-                "Category": category,
-                "Item": name,
-                "Color": color if color else "Unspecified",
-                "Vibe": vibe
-            }
-            st.session_state.closet = pd.concat([st.session_state.closet, pd.DataFrame([new_clothing_item])], ignore_index=True)
-            st.toast(f"Saved: {name} added to your digital wardrobe!", icon="✨")
+        custom_mood = st.text_input(
+            "Specific style choices or adjustments?",
+            placeholder="e.g., 'Incorporate layers', 'All black look', 'No shorts'"
+        )
+        
+        st.markdown(" ")
+        generate_outfit = st.button("🚀 Curate Custom Silhouette Outfit", type="primary", use_container_width=True)
 
-    st.markdown("---")
-    st.metric("Total Digital Items Stored", len(st.session_state.closet))
-
-# -------------------------------------------------------------
-# 5. MAIN CONFIGURATION PANE
-# -------------------------------------------------------------
-col_control, col_output = st.columns([1, 1.2])
-
-with col_control:
-    st.header("🎯 Context & Environment Settings")
-    
-    occasion = st.selectbox(
-        "What event are you dressing for?",
-        ["Casual Weekend Hangout", "High-Stakes Job Interview", "Formal Dinner Date", "Corporate Business Meeting", "Summer Outdoor Brunch", "Late Night Club/Lounge Vibe"]
-    )
-    
-    weather = st.selectbox(
-        "What is the weather outside?",
-        ["Bright, Sunny & Warm", "Freezing Cold & Rainy", "Chilly, Breezy & Windy", "High Humidity & Hot"]
-    )
-    
-    custom_mood = st.text_input(
-        "Specific aesthetic guidelines?",
-        placeholder="e.g., 'Minimize torso look', 'Highlight shoulders', 'Earth tones only'"
-    )
-    
-    st.markdown(" ")
-    generate_outfit = st.button("🚀 Curate Custom Silhouette Outfit", type="primary", use_container_width=True)
-    
-    st.markdown("---")
-    st.subheader("📦 Your Current Active Wardrobe Database")
-    st.dataframe(st.session_state.closet, use_container_width=True, hide_index=True)
-
-# -------------------------------------------------------------
-# 6. ENHANCED RESPONSE GENERATION MATRIX
-# -------------------------------------------------------------
-with col_output:
-    st.header("👔 Your Custom Tailored Look")
-    
-    if generate_outfit:
-        if API_KEY == "YOUR_GEMINI_API_KEY_HERE" and not os.getenv("GEMINI_API_KEY"):
-            st.error("Authentication Error: Valid API configuration required to run styling algorithm engines.")
-        elif len(st.session_state.closet) < 3:
-            st.warning("Your digital closet needs a larger selection. Please register items using the sidebar configuration panels.")
+    with col_output:
+        st.subheader("👔 Your Curated Look")
+        
+        if generate_outfit:
+            if API_KEY == "YOUR_GEMINI_API_KEY_HERE" and not os.getenv("GEMINI_API_KEY"):
+                st.error("Authentication Error: Valid API configuration required to run styling algorithm engines.")
+            elif len(st.session_state.closet) < 3:
+                st.warning("Your digital closet needs a larger selection. Please add items in the Wardrobe tab.")
+            else:
+                with st.spinner("Calculating physical build matching indexes, layer weight, and proportions..."):
+                    closet_text_dump = st.session_state.closet.to_string(index=False)
+                    
+                    # Safely pass profile properties from session storage defaults
+                    h_cm = st.session_state.get('p_height', 175)
+                    w_kg = st.session_state.get('p_weight', 70)
+                    b_sh = st.session_state.get('p_shape', 'Rectangle / Athletic')
+                    has_img = "Yes (User uploaded reference avatar)" if st.session_state.get('p_img_uploaded', False) else "None provided"
+                    
+                    styling_prompt = f"""
+                    You are a world-class premier fashion stylist specializing in geometric body shape tailoring and proportion styling.
+                    Your task is to pick the ultimate outfit combination from the user's available wardrobe list based on their physical profile dimensions, weather conditions, and occasion.
+                    
+                    ### User Physical Silhouette Profile:
+                    - Height: {h_cm} cm
+                    - Weight: {w_kg} kg
+                    - Stated Body Frame Silhouette Type: {b_sh}
+                    - Reference Photo State: {has_img}
+                    
+                    ### Environmental Metrics:
+                    - Target Occasion: {occasion}
+                    - Weather Climate Factor: {weather}
+                    - Custom Tailoring Adjustments: {custom_mood}
+                    
+                    ### Available Wardrobe Dataset Pool:
+                    {closet_text_dump}
+                    
+                    ### Rules:
+                    1. Pick exactly one Top, one Bottom, and one Footwear choice from the list. Do not invent non-existent clothes.
+                    2. Explicitly explain how this clothing configuration flatters a person who is {h_cm}cm tall and weighs {w_kg}kg with an {b_sh} build type.
+                    
+                    ### Enforced JSON Output Structural Design Map:
+                    Return your response strictly as valid, raw JSON matching this map format structure:
+                    {{
+                      "top_picked": "Name of the chosen item categorized as Top",
+                      "bottom_picked": "Name of the chosen item categorized as Bottom",
+                      "footwear_picked": "Name of the chosen item categorized as Footwear",
+                      "accessories_list": ["Accessory Choice A", "Accessory Choice B"],
+                      "tailoring_fit_analysis": "An expert analysis explaining how these selected cuts, structures, and item fits specifically optimize, flatter, and balance their physical proportions based on their height, weight, and body frame type."
+                    }}
+                    """
+                    
+                    try:
+                        raw_ai_text = call_gemini_api(API_KEY, styling_prompt)
+                        parsed_style_map = json.loads(raw_ai_text)
+                        
+                        st.success("🎉 Look Tailored Successfully!")
+                        
+                        # Layout grid architecture scales safely across small and big panels
+                        st.markdown("#### 📋 Selected Ensemble Matrix")
+                        
+                        card_top, card_bottom, card_shoes = st.columns(3)
+                        with card_top:
+                            st.metric(label="👕 Top Choice", value=parsed_style_map.get("top_picked", "N/A"))
+                        with card_bottom:
+                            st.metric(label="👖 Bottom Choice", value=parsed_style_map.get("bottom_picked", "N/A"))
+                        with card_shoes:
+                            st.metric(label="👟 Footwear Choice", value=parsed_style_map.get("footwear_picked", "N/A"))
+                        
+                        selected_accs = parsed_style_map.get("accessories_list", [])
+                        if selected_accs:
+                            st.markdown("**✨ Accent Pieces & Accessories:**")
+                            st.markdown(" ".join([f"`{item}`" for item in selected_accs]))
+                        
+                        st.markdown("---")
+                        st.markdown("#### 💡 Silhouette Proportional Analysis")
+                        st.info(parsed_style_map.get("tailoring_fit_analysis", "No metrics returned."))
+                        
+                    except Exception as error_exception:
+                        st.error(f"Failed to generate outfit curation safely. Diagnostic log: {error_exception}")
         else:
-            with st.spinner("Calculating physical build matching indexes, layer weight, and proportions..."):
-                closet_text_dump = st.session_state.closet.to_string(index=False)
-                
-                styling_prompt = f"""
-                You are a world-class premier fashion stylist specializing in geometric body shape tailoring and proportion styling.
-                Your task is to pick the ultimate outfit combination from the user's available wardrobe list based on their physical profile dimensions, weather conditions, and occasion.
-                
-                ### User Physical Silhouette Profile:
-                - Height: {height_cm} cm
-                - Weight: {weight_kg} kg
-                - Stated Body Frame Silhouette Type: {body_shape}
-                - Reference Portrait Media URL: {user_photo_url if user_photo_url else 'None provided'}
-                
-                ### Environmental Metrics:
-                - Target Occasion: {occasion}
-                - Weather Climate Factor: {weather}
-                - Custom Tailoring Adjustments: {custom_mood}
-                
-                ### Available Wardrobe Dataset Pool:
-                {closet_text_dump}
-                
-                ### Rules:
-                1. Pick exactly one Top, one Bottom, and one Footwear choice from the list. Do not invent non-existent clothes.
-                2. Explicitly explain how this clothing configuration flatters a person who is {height_cm}cm tall and weighs {weight_kg}kg with an {body_shape} build type.
-                
-                ### Enforced JSON Output Structural Design Map:
-                Return your response strictly as valid, raw JSON matching this map format structure:
-                {{
-                  "top_picked": "Name of the chosen item categorized as Top",
-                  "bottom_picked": "Name of the chosen item categorized as Bottom",
-                  "footwear_picked": "Name of the chosen item categorized as Footwear",
-                  "accessories_list": ["Accessory Choice A", "Accessory Choice B"],
-                  "tailoring_fit_analysis": "An expert analysis explaining how these selected cuts, structures, and item fits specifically optimize, flatter, and balance their physical proportions based on their height, weight, and body frame type."
-                }}
-                """
-                
-                try:
-                    # Run the dynamic call process block
-                    raw_ai_text = call_gemini_api(API_KEY, styling_prompt)
-                    parsed_style_map = json.loads(raw_ai_text)
-                    
-                    st.success("🎉 Look Tailored Successfully!")
-                    
-                    # Layout grid design framework cards
-                    st.markdown("### 👔 Selected Ensemble Matrix")
-                    
-                    card_top, card_bottom, card_shoes = st.columns(3)
-                    with card_top:
-                        st.metric(label="👕 Top Choice", value=parsed_style_map.get("top_picked", "N/A"))
-                    with card_bottom:
-                        st.metric(label="👖 Bottom Choice", value=parsed_style_map.get("bottom_picked", "N/A"))
-                    with card_shoes:
-                        st.metric(label="👟 Footwear Choice", value=parsed_style_map.get("footwear_picked", "N/A"))
-                    
-                    # Display Accessories
-                    selected_accs = parsed_style_map.get("accessories_list", [])
-                    if selected_accs:
-                        st.markdown("#### ✨ Accent Pieces & Accessories")
-                        st.markdown(" ".join([f"`{item}`" for item in selected_accs]))
-                    
-                    # Display Pro Fit & Fit Customization Breakdown
-                    st.markdown("---")
-                    st.markdown("### 💡 Silhouette Proportional Analysis")
-                    st.info(parsed_style_map.get("tailoring_fit_analysis", "No structural metrics returned by the generative engine."))
-                    
-                except Exception as error_exception:
-                    st.error(f"Failed to generate outfit curation successfully. Error diagnostic log: {error_exception}")
-    else:
-        st.info("Tailor your dimension metrics on the left pane and press **Curate Custom Silhouette Outfit** to generate recommendations.")
+            st.info("Tailor your criteria on the left and click **Curate Custom Silhouette Outfit**.")
+
+# --- TAB 2: INVENTORY & EXPANSION CLOSER ---
+with tab_closet:
+    st.subheader("📦 Closet Database Ledger")
+    
+    with st.expander("➕ Register a New Clothing Piece", expanded=False):
+        with st.form("wardrobe_input_form", clear_on_submit=True):
+            category = st.selectbox("Clothing Layer", ["Top", "Bottom", "Footwear", "Accessory"])
+            name = st.text_input("Clothing Name", placeholder="e.g., Brushed Twill Overshirt")
+            color = st.text_input("Primary Color", placeholder="e.g., Muted Sage")
+            vibe = st.selectbox("Design Vibe/Style", ["Casual", "Formal", "Smart Casual", "Athletic", "Universal"])
+            
+            submitted = st.form_submit_button("➕ Register Item to Closet", use_container_width=True)
+            
+            if submitted and name.strip():
+                new_clothing_item = {
+                    "Category": category,
+                    "Item": name,
+                    "Color": color if color else "Unspecified",
+                    "Vibe": vibe
+                }
+                st.session_state.closet = pd.concat([st.session_state.closet, pd.DataFrame([new_clothing_item])], ignore_index=True)
+                st.toast(f"Saved: {name} registered!", icon="✨")
+
+    st.markdown(" ")
+    st.dataframe(st.session_state.closet, use_container_width=True, hide_index=True)
+    st.metric("Total Active Inventory Items", len(st.session_state.closet))
+
+# --- TAB 3: PERSONAL PHYSICAL PROFILE MANAGEMENT ---
+with tab_profile:
+    st.subheader("👤 Tailoring Metrics & Identity Specs")
+    
+    col_p1, col_p2 = st.columns([1, 1])
+    
+    with col_p1:
+        # Dynamic inputs save instantly to memory via keys
+        st.number_input("Height (cm)", min_value=100, max_value=250, value=175, step=1, key="p_height")
+        st.number_input("Weight (kg)", min_value=30, max_value=200, value=70, step=1, key="p_weight")
+        st.selectbox(
+            "Body Frame Configuration",
+            ["Rectangle / Athletic", "Inverted Triangle (Broad Shoulders)", "Oval / Round", "Triangle / Pear", "Hourglass"],
+            key="p_shape"
+        )
+        
+    with col_p2:
+        st.markdown("**📸 Device Camera / Gallery Image Upload**")
+        # FIXED: Added file_uploader to allow native device photo access on phones & tablets
+        uploaded_file = st.file_uploader(
+            "Choose a full-body portrait photo...", 
+            type=["jpg", "jpeg", "png"],
+            help="Upload an image from your device gallery or take a picture directly using your phone's camera."
+        )
+        
+        if uploaded_file is not None:
+            st.session_state['p_img_uploaded'] = True
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Profile Avatar Reference Active", use_container_width=True)
+        else:
+            st.session_state['p_img_uploaded'] = False
+            st.caption("No custom image asset active. Using standard silhouette matrix defaults.")
