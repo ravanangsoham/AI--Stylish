@@ -12,21 +12,18 @@ st.title("👗 Personal AI Fashion Stylist")
 st.write("Get personalized, context-aware outfit recommendations from your own wardrobe.")
 
 # Configure your Gemini API Key
-# Replace with your actual key or set it as an environment variable
 API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
 if API_KEY == "YOUR_GEMINI_API_KEY_HERE":
     st.warning("Please configure your GEMINI_API_KEY to enable the AI recommendations.")
 
-# SAFE CLIENT INITIALIZATION: 
-# If api_key parameter fails, it fallback-initializes via environment variable automatically.
+# Initialize the GenAI client safely
 try:
     if API_KEY and API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         client = genai.Client(api_key=API_KEY)
     else:
         client = genai.Client()
-except TypeError:
-    # Fallback to setting environment variable directly if the SDK expects it implicitly
+except Exception:
     if API_KEY and API_KEY != "YOUR_GEMINI_API_KEY_HERE":
         os.environ["GEMINI_API_KEY"] = API_KEY
     client = genai.Client()
@@ -83,7 +80,6 @@ with col2:
             st.error("Cannot proceed without a valid Gemini API Key configuration.")
         else:
             with st.spinner("Analyzing style combinations..."):
-                # Convert wardrobe DataFrame to string context for the model
                 wardrobe_context = st.session_state.wardrobe.to_string(index=False)
                 
                 # Construct the styling prompt
@@ -114,17 +110,25 @@ with col2:
                 """
                 
                 try:
-                    # Request content generation using a clean config dictionary
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                        config={
-                            'response_mime_type': 'application/json'
-                        }
-                    )
+                    # FIXED: Cross-version support pattern for 'client.models' vs legacy wrappers
+                    if hasattr(client, 'models'):
+                        response = client.models.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=prompt,
+                            config={'response_mime_type': 'application/json'}
+                        )
+                        response_text = response.text
+                    else:
+                        # Fallback routing structure for older generation installations
+                        response = client.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=prompt,
+                            config={'response_mime_type': 'application/json'}
+                        )
+                        response_text = response.text
                     
                     # Parse the JSON outcome
-                    result = json.loads(response.text)
+                    result = json.loads(response_text)
                     
                     # Display recommendations cleanly
                     st.success("Stylist Recommendation Ready!")
