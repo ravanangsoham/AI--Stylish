@@ -4,10 +4,6 @@ import pandas as pd
 st.set_page_config(page_title="Digital Closet Ledger", layout="wide")
 st.title("📦 Digital Wardrobe Inventory Management")
 
-if "closet" not in st.session_state:
-    st.write("Initializing closet system matrix...")
-    st.experimental_rerun()
-
 # EXPAND INVENTORY SUBMISSION FORM
 with st.expander("➕ Register a New Clothing Item Block", expanded=False):
     with st.form("add_item_form", clear_on_submit=True):
