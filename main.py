@@ -110,22 +110,15 @@ with col2:
                 """
                 
                 try:
-                    # FIXED: Cross-version support pattern for 'client.models' vs legacy wrappers
-                    if hasattr(client, 'models'):
-                        response = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt,
-                            config={'response_mime_type': 'application/json'}
+                    # Use the correct parameter name: generation_config
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                        generation_config=genai.types.GenerationConfig(
+                            response_mime_type='application/json'
                         )
-                        response_text = response.text
-                    else:
-                        # Fallback routing structure for older generation installations
-                        response = client.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt,
-                            config={'response_mime_type': 'application/json'}
-                        )
-                        response_text = response.text
+                    )
+                    response_text = response.text
                     
                     # Parse the JSON outcome
                     result = json.loads(response_text)
